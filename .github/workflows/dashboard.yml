@@ -1,0 +1,32 @@
+name: Generar Dashboard
+
+on:
+  push:
+    paths:
+      - 'tfa26_carga.csv'
+      - 'tfa26_goles.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install pandas
+
+      - run: python generar_dashboard.py
+
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add dashboard.html
+          git commit -m "Dashboard actualizado"
+          git push
