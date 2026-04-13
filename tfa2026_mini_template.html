@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Federalytics · Federal A 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:    #ffffff;
+  --s1:    #fafafa;
+  --s2:    #f4f4f4;
+  --s3:    #e8e8e8;
+  --t1:    #111111;
+  --t2:    #555555;
+  --t3:    #999999;
+  --acc:   #0066cc;
+  --z1:    #0288d1;
+  --z2:    #2e7d32;
+  --z3:    #e65100;
+  --z4:    #c2185b;
+  --rev:   #6a1b9a;
+  --dn:    #b71c1c;
+  --gp:    #2e7d32;
+  --gn:    #c62828;
+  --mono:  'DM Mono', 'Courier New', monospace;
+  --grotesk: 'Space Grotesk', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--t1); font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+
+/* ── Layout ── */
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* ── Header ── */
+.hdr { border-bottom: 1px solid var(--s3); padding-bottom: 16px; margin-bottom: 24px; }
+.hdr-brand { font-family: var(--grotesk); font-size: 18px; font-weight: 500; color: var(--acc); letter-spacing: .06em; }
+.hdr-brand span { color: var(--t3); font-size: 14px; }
+.hdr-meta { color: var(--t2); font-size: 11px; margin-top: 6px; letter-spacing: .05em; }
+.hdr-progress { margin-top: 10px; height: 2px; background: var(--s3); border-radius: 1px; }
+.hdr-progress-fill { height: 100%; background: var(--acc); border-radius: 1px; transition: width .3s; }
+.hdr-pills { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+.pill { font-size: 11px; color: var(--t3); }
+.pill span { color: var(--t1); font-family: var(--grotesk); font-size: 13px; font-weight: 500; }
+
+/* ── Section headers ── */
+.sec { margin-bottom: 28px; }
+.sec-hdr { font-family: var(--grotesk); font-size: 11px; font-weight: 500; letter-spacing: .12em; color: var(--t3); text-transform: uppercase; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--s3); display: flex; align-items: baseline; gap: 10px; }
+.sec-hdr em { font-style: normal; color: var(--t3); font-weight: 400; font-size: 10px; font-family: var(--mono); }
+
+/* ── Grid ── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 900px) { .g4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .g2, .g4 { grid-template-columns: 1fr; } }
+
+/* ── Zone cards (compat con render functions existentes) ── */
+.zcard { background: var(--s1); border: 1px solid var(--s3); border-radius: 4px; overflow: hidden; }
+.zhdr { display: flex; align-items: baseline; gap: 8px; padding: 8px 12px; background: var(--s2); border-bottom: 1px solid var(--s3); }
+.zdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-bottom: 1px; }
+.zname { font-family: var(--grotesk); font-size: 12px; font-weight: 500; }
+.zmeta { font-size: 10px; color: var(--t3); margin-left: auto; }
+.tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tscroll::-webkit-scrollbar { height: 3px; }
+.tscroll::-webkit-scrollbar-thumb { background: var(--s3); }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+thead tr { background: var(--s2); }
+th { padding: 4px 8px; color: var(--t3); font-weight: 400; font-family: var(--grotesk); font-size: 10px; letter-spacing: .06em; white-space: nowrap; }
+td { padding: 3px 8px; border-bottom: 1px solid var(--s3); color: var(--t2); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--s2); color: var(--t1); }
+td.n { color: var(--t3); text-align: right; width: 20px; }
+td.l { color: var(--t1); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+td.p { color: var(--acc); font-weight: 500; text-align: right; }
+td.c { text-align: center; }
+td.gp { color: var(--gp); text-align: right; }
+td.gn { color: var(--gn); text-align: right; }
+td.gz { color: var(--t3); text-align: right; }
+th.c { text-align: center; }
+th.l { text-align: left; }
+tr.tsep td { border-bottom: 1px dashed var(--s3); }
+.tg-sticky { background: var(--bg); position: sticky; left: 0; z-index: 2; }
+.tg-row:hover td { background: var(--s2) !important; }
+.tg-row:hover .tg-sticky { background: var(--s2) !important; }
+.tg-row.h2h-pick { cursor: crosshair; }
+.tg-row.h2h-pick:hover td { background: var(--s2) !important; }
+.tg-row.h2h-pick:hover .tg-sticky { background: var(--s2) !important; }
+.tg-row.h2h-sel td { background: var(--s2) !important; }
+.tg-row.h2h-sel .tg-sticky { background: var(--s2) !important; z-index: 2; }
+
+/* ── Chips ── */
+.chip { display: inline-block; padding: 1px 5px; border-radius: 2px; font-size: 9px; font-family: var(--grotesk); font-weight: 500; letter-spacing: .04em; }
+.c-a  { background: rgba(106,27,154,.12); color: #6a1b9a; }
+.c-b  { background: rgba(106,27,154,.12); color: #6a1b9a; }
+.c-b5 { background: rgba(255,183,77,.15); color: var(--acc); }
+.c-ra { background: rgba(78,52,46,.12);   color: #4e342e; }
+.c-rb { background: rgba(78,52,46,.12);   color: #4e342e; }
+.c-r  { background: rgba(78,52,46,.12);   color: #4e342e; }
+.c-3f { background: rgba(129,199,132,.1); color: var(--z2); }
+.c-dn { background: rgba(239,154,154,.08); color: var(--dn); }
+
+/* ── Stats globales ── */
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+@media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 420px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+.kpi { background: var(--s1); border: 1px solid var(--s3); border-radius: 4px; padding: 10px 12px; }
+.kpi-val { font-family: var(--grotesk); font-size: 20px; font-weight: 500; color: var(--acc); line-height: 1; }
+.kpi-lbl { font-size: 10px; color: var(--t3); margin-top: 4px; letter-spacing: .05em; }
+.kpi-sub { font-size: 10px; color: var(--t2); margin-top: 2px; }
+
+/* ── Barra tramos ── */
+.tramo-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 10px; }
+@media (max-width: 600px) { .tramo-grid { grid-template-columns: repeat(3, 1fr); } }
+.tramo-bar-wrap { background: var(--s1); border: 1px solid var(--s3); border-radius: 4px; padding: 10px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.tramo-bar-outer { width: 100%; height: 60px; display: flex; align-items: flex-end; }
+.tramo-bar-inner { width: 100%; background: var(--s3); border-radius: 2px 2px 0 0; transition: background .2s; }
+.tramo-bar-wrap:hover .tramo-bar-inner { background: var(--acc); }
+.tramo-lbl { font-size: 9px; color: var(--t3); letter-spacing: .04em; }
+.tramo-val { font-family: var(--grotesk); font-size: 14px; font-weight: 500; color: var(--t1); }
+
+/* ── Racha ── */
+.racha-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+@media (max-width: 600px) { .racha-grid { grid-template-columns: 1fr; } }
+.racha-row { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--s3); }
+.racha-row:last-child { border-bottom: none; }
+.racha-row:hover { background: var(--s2); }
+.racha-eq { flex: 1; font-size: 11px; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.racha-z  { font-size: 10px; width: 16px; text-align: center; flex-shrink: 0; }
+.racha-badges { display: flex; gap: 3px; flex-shrink: 0; }
+.rb { width: 18px; height: 18px; border-radius: 2px; font-size: 9px; font-family: var(--grotesk); font-weight: 500; display: flex; align-items: center; justify-content: center; }
+.rb-g { background: rgba(129,199,132,.15); color: var(--gp); }
+.rb-e { background: rgba(136,136,128,.12); color: var(--t2); }
+.rb-p { background: rgba(240,98,146,.12); color: var(--gn); }
+
+/* ── Local/Visitante split ── */
+.lv-row { display: flex; align-items: center; padding: 3px 10px; border-bottom: 1px solid var(--s3); gap: 6px; font-size: 11px; }
+.lv-row:last-child { border-bottom: none; }
+.lv-row:hover { background: var(--s2); }
+.lv-eq  { flex:1; color:var(--t1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lv-pts { color:var(--acc); font-family:var(--grotesk); font-weight:500; text-align:right; min-width:24px; }
+.lv-rec { color:var(--t3); font-size:10px; min-width:48px; text-align:right; }
+
+/* ── Variedad scoring ── */
+.sc-row { display: flex; align-items: center; padding: 3px 10px; border-bottom: 1px solid var(--s3); gap: 8px; font-size: 11px; }
+.sc-row:last-child { border-bottom: none; }
+.sc-row:hover { background: var(--s2); }
+.sc-eq  { flex:1; color:var(--t1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-n   { font-family:var(--grotesk); font-size:13px; font-weight:500; color:var(--acc); text-align:right; min-width:20px; }
+.sc-lbl { font-size:10px; color:var(--t3); }
+
+/* ── Footer ── */
+.footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--s3); color: var(--t3); font-size: 10px; letter-spacing: .06em; display: flex; justify-content: space-between; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 2px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab  { color: var(--t3); font-size: 10px; cursor: pointer; padding: 4px 12px; border: 1px solid var(--s3); border-radius: 2px; font-family: var(--grotesk); letter-spacing: .06em; background: transparent; user-select: none; transition: color .15s, border-color .15s, background .15s; }
+.tab:hover  { color: var(--t1); border-color: var(--t2); }
+.tab.active { color: #fff; background: var(--t1); border-color: var(--t1); font-weight: 500; }
+
+@media (max-width: 600px) {
+  .wrap { padding: 12px 10px 40px; }
+  .tab { font-size: 11px; padding: 8px 14px; }
+  /* Tabla stats — mostrar ~10 filas */
+  div[style*="min-height:520px"] { min-height: 262px !important; max-height: 262px !important; }
+  /* Tabla posiciones en mobile */
+  .tscroll { overflow-x: visible; }
+  .tscroll th.col-gf, .tscroll td.col-gf { display: none; }
+  .tscroll th.col-gc, .tscroll td.col-gc { display: none; }
+  .tscroll th.col-gfgc, .tscroll td.col-gfgc { display: table-cell !important; }
+  .tscroll table { font-size: 10px; }
+  .tscroll td, .tscroll th { padding: 5px 5px; text-align: center; }
+  .tscroll td.l, .tscroll th.l { text-align: left; }
+  .tscroll td.n, .tscroll th.c { text-align: center; }
+  .tscroll td.l { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+.sec { display: none; }
+.sec.active { display: block; }
+
+/* ── Proyección label ── */
+.proy-label { display: inline-block; background: rgba(232,255,0,.06); color: var(--acc); font-size: 9px; font-family: var(--grotesk); padding: 2px 6px; border-radius: 2px; letter-spacing: .06em; margin-left: 8px; }
+
+/* ── Panel equipo — overlay desktop ── */
+#eq-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:24px; }
+#eq-overlay.open { display:flex; }
+#eq-panel { background:#fff;border:1px solid var(--s3);border-radius:6px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.12); }
+
+/* ── Panel equipo — bottom sheet mobile ── */
+@media(max-width:600px){
+  #eq-overlay { align-items:flex-end; padding:0; }
+  #eq-panel { max-width:100%;width:100%;border-radius:12px 12px 0 0;max-height:88vh;border:none;border-top:1px solid var(--s3);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1); }
+  #eq-overlay.open #eq-panel { transform:translateY(0); }
+  #eq-panel::before { content:'';display:block;width:36px;height:4px;background:var(--s3);border-radius:2px;margin:10px auto 0; }
+}
+
+/* ── Contenido panel ── */
+.p-head { padding:16px 20px 12px;border-bottom:1px solid var(--s3);position:relative; }
+.p-cerrar { position:absolute;top:12px;right:16px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--t3);line-height:1;font-family:var(--grotesk); }
+.p-cerrar:hover { color:var(--t1); }
+.p-nombre { font-family:var(--grotesk);font-size:17px;font-weight:500;color:var(--t1); }
+.p-zonatxt { font-size:10px;margin-top:3px;letter-spacing:.08em;font-family:var(--grotesk); }
+.p-stats-row { display:grid;grid-template-columns:repeat(8,1fr);padding:12px 20px;border-bottom:1px solid var(--s3);gap:4px;overflow-x:auto; }
+.p-stat { text-align:center; }
+.p-stat-val { font-family:var(--grotesk);font-size:15px;font-weight:500;color:var(--t1); }
+.p-stat-lbl { font-size:9px;color:var(--t3);letter-spacing:.06em;margin-top:1px; }
+.p-sec { padding:12px 20px;border-bottom:1px solid var(--s3); }
+.p-sec:last-child { border-bottom:none; }
+.p-sec-title { font-family:var(--grotesk);font-size:9px;font-weight:500;letter-spacing:.1em;color:var(--t3);text-transform:uppercase;margin-bottom:8px; }
+
+/* Racha círculos */
+.racha-wrap { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
+.rc { width:28px;height:28px;border-radius:50%;font-family:var(--grotesk);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.rc-G { background:rgba(46,125,50,.15);color:var(--gp); }
+.rc-E { background:rgba(230,160,0,.13);color:#b8860b; }
+.rc-P { background:rgba(198,40,40,.12);color:var(--gn); }
+.racha-label { font-size:10px;color:var(--t3);margin-left:4px; }
+
+/* Local vs Visitante */
+.lv-table { width:100%;border-collapse:collapse;font-size:11px; }
+.lv-table th { padding:3px 8px;color:var(--t3);font-weight:400;font-family:var(--grotesk);font-size:9px;letter-spacing:.06em;text-align:right; }
+.lv-table th.l { text-align:left; }
+.lv-table td { padding:4px 8px;border-top:1px solid var(--s3);color:var(--t2);text-align:right; }
+.lv-table td.l { color:var(--t1);font-family:var(--grotesk);font-size:10px;font-weight:500;text-align:left; }
+.lv-table td.hi { color:var(--acc);font-weight:500; }
+
+/* Partidos */
+.partido-row { display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--s3);font-size:11px; }
+.partido-row:last-child { border-bottom:none; }
+.p-fecha { font-size:10px;color:var(--t3);width:22px;flex-shrink:0; }
+.p-cond { font-size:9px;font-family:var(--grotesk);letter-spacing:.06em;width:36px;flex-shrink:0;padding:2px 4px;border-radius:2px;text-align:center; }
+.p-cond-l { background:rgba(0,102,204,.08);color:var(--acc); }
+.p-cond-v { background:rgba(100,100,100,.08);color:var(--t3); }
+.p-texto { flex:1;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.p-score { font-family:var(--grotesk);font-size:11px;font-weight:500;width:30px;text-align:right;flex-shrink:0; }
+.p-res { width:22px;height:22px;border-radius:50%;flex-shrink:0;font-family:var(--grotesk);font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center; }
+.pr-G { background:rgba(46,125,50,.15);color:var(--gp); }
+.pr-E { background:rgba(230,160,0,.13);color:#b8860b; }
+.pr-P { background:rgba(198,40,40,.12);color:var(--gn); }
+
+/* Goleadores panel */
+.gol-row { display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--s3);font-size:11px; }
+.gol-row:last-child { border-bottom:none; }
+.gol-n { color:var(--t3);width:16px;text-align:right;flex-shrink:0;font-size:10px; }
+.gol-nombre { flex:1;color:var(--t1); }
+.gol-pen { font-size:10px;color:var(--t3); }
+.gol-count { font-family:var(--grotesk);font-size:13px;font-weight:500;color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-brand">FEDERALYTICS <span>· TORNEO FEDERAL A 2026</span></div>
+    <div class="hdr-meta">{{META_1F}}</div>
+    <div class="hdr-progress"><div class="hdr-progress-fill" style="width:{{PCT_FASE}}%"></div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('pf')">POSICIONES</div>
+    <div class="tab" onclick="showTab('stats')">ESTADÍSTICAS</div>
+  </div>
+
+  <!-- POSICIONES -->
+  <div class="sec active" id="pf">
+    <div class="sec-hdr">POSICIONES <em>{{FECHA_ACTUAL}} / {{FECHA_TOTAL}} FECHAS · {{PARTIDOS_JUGADOS}} PARTIDOS JUGADOS</em></div>
+    <div class="g2">
+      {{ZONAS_1F}}
+    </div>
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="sec" id="stats">
+    {{STATS_FULL}}
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>@FEDERALYTICS · TFA2026</span>
+    <span>{{META_1F}}</span>
+  </div>
+
+</div>
+
+
+<!-- PANEL EQUIPO -->
+<div id="eq-overlay">
+  <div id="eq-panel">
+    <div class="p-head">
+      <button class="p-cerrar" id="eq-cerrar">✕</button>
+      <div class="p-nombre" id="pNombre">—</div>
+      <div class="p-zonatxt" id="pZona">—</div>
+    </div>
+    <div class="p-stats-row" id="pStats"></div>
+    <div class="p-sec">
+      <div class="p-sec-title">Racha</div>
+      <div class="racha-wrap" id="pRacha"></div>
+    </div>
+    <div class="p-sec">
+      <div class="p-sec-title">Local vs Visitante</div>
+      <div id="pLV"></div>
+    </div>
+    <div class="p-sec">
+      <div class="p-sec-title">Partidos jugados</div>
+      <div id="pPartidos"></div>
+    </div>
+    <div class="p-sec">
+      <div class="p-sec-title">Goleadores</div>
+      <div id="pGoleadores"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PERFILES = {{PERFILES_JSON}};
+const ZCOLORS  = {1:'#0288d1',2:'#2e7d32',3:'#e65100',4:'#c2185b'};
+
+function rdt(pts,pj){ return pj ? Math.round(pts/(pj*3)*100)+'%' : '—'; }
+
+function mostrarPerfil(nombre) {
+  const p = PERFILES[nombre];
+  if (!p) return;
+  const color = ZCOLORS[p.zona] || '#555';
+  const dg    = p.dg >= 0 ? '+' + p.dg : String(p.dg);
+
+  document.getElementById('pNombre').textContent = p.nombre;
+  document.getElementById('pZona').innerHTML =
+    '<span style="color:'+color+'">ZONA '+p.zona+'</span> &nbsp;·&nbsp; '+p.pos+'° POSICIÓN &nbsp;·&nbsp; PRIMERA FASE 2026';
+
+  const stats = [['PJ',p.pj],['G',p.pg],['E',p.pe],['P',p.pp],['GF',p.gf],['GC',p.gc],['DG',dg],['PTS',p.pts]];
+  document.getElementById('pStats').innerHTML = stats.map(function(s,i){
+    return '<div class="p-stat"><div class="p-stat-val" style="'+(i===7?'color:var(--acc)':'')+'">'+s[1]+'</div><div class="p-stat-lbl">'+s[0]+'</div></div>';
+  }).join('');
+
+  const racha5 = p.racha.slice(-5);
+  document.getElementById('pRacha').innerHTML =
+    racha5.map(function(r){ return '<div class="rc rc-'+r+'">'+r+'</div>'; }).join('') +
+    '<span class="racha-label">'+p.racha.length+' PJ · últimos '+racha5.length+'</span>';
+
+  const l = {pj:p.loc_pj||0, pts:p.loc_pts||0, gf:p.loc_gf||0, gc:p.loc_gc||0};
+  const v = {pj:p.vis_pj||0, pts:p.vis_pts||0, gf:p.vis_gf||0, gc:p.vis_gc||0};
+  const ldg = l.gf-l.gc, vdg = v.gf-v.gc;
+  document.getElementById('pLV').innerHTML =
+    '<table class="lv-table"><thead><tr><th class="l"></th><th>PJ</th><th>PTS</th><th>%RDT</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody>'+
+    '<tr><td class="l">LOCAL</td><td>'+l.pj+'</td><td class="hi">'+l.pts+'</td><td>'+rdt(l.pts,l.pj)+'</td><td>'+l.gf+'</td><td>'+l.gc+'</td>'+
+    '<td style="color:'+(ldg>0?'var(--gp)':ldg<0?'var(--gn)':'var(--t3)')+'">'+( ldg>=0?'+'+ldg:ldg)+'</td></tr>'+
+    '<tr><td class="l">VISITANTE</td><td>'+v.pj+'</td><td class="hi">'+v.pts+'</td><td>'+rdt(v.pts,v.pj)+'</td><td>'+v.gf+'</td><td>'+v.gc+'</td>'+
+    '<td style="color:'+(vdg>0?'var(--gp)':vdg<0?'var(--gn)':'var(--t3)')+'">'+( vdg>=0?'+'+vdg:vdg)+'</td></tr>'+
+    '</tbody></table>';
+
+  document.getElementById('pPartidos').innerHTML = p.partidos.map(function(pt){
+    var esL = pt.cond==='LOCAL';
+    return '<div class="partido-row">'+
+      '<span class="p-fecha">F'+pt.f+'</span>'+
+      '<span class="p-cond '+(esL?'p-cond-l':'p-cond-v')+'">'+(esL?'LOC':'VIS')+'</span>'+
+      '<span class="p-texto">'+pt.texto+'</span>'+
+      '<span class="p-score">'+pt.gf+'–'+pt.gc+'</span>'+
+      '<div class="p-res pr-'+pt.res+'">'+pt.res+'</div>'+
+      '</div>';
+  }).join('');
+
+  var gols = p.goleadores || [];
+  document.getElementById('pGoleadores').innerHTML = gols.length
+    ? gols.map(function(g,i){
+        return '<div class="gol-row">'+
+          '<span class="gol-n">'+(i+1)+'</span>'+
+          '<span class="gol-nombre">'+g.jugador+(g.penales?' <span class="gol-pen">('+g.penales+'p)</span>':'')+'</span>'+
+          '<span class="gol-count">'+g.goles+'</span>'+
+          '</div>';
+      }).join('')
+    : '<div style="color:var(--t3);font-size:11px">Sin goles registrados</div>';
+
+  var ov = document.getElementById('eq-overlay');
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('eq-panel').scrollTop = 0;
+}
+
+function cerrarPanel() {
+  document.getElementById('eq-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('eq-overlay').addEventListener('click', function(e){
+  if (e.target === document.getElementById('eq-overlay')) cerrarPanel();
+});
+document.getElementById('eq-cerrar').addEventListener('click', cerrarPanel);
+document.addEventListener('keydown', function(e){ if (e.key==='Escape') cerrarPanel(); });
+
+var _ty = 0;
+document.getElementById('eq-panel').addEventListener('touchstart', function(e){ _ty = e.touches[0].clientY; }, {passive:true});
+document.getElementById('eq-panel').addEventListener('touchend', function(e){
+  if (e.changedTouches[0].clientY - _ty > 80 && document.getElementById('eq-panel').scrollTop === 0) cerrarPanel();
+}, {passive:true});
+
+document.addEventListener('click', function(e){
+  var tr = e.target.closest('tr[data-equipo]');
+  if (tr) mostrarPerfil(tr.dataset.equipo);
+});
+
+function showTab(id){
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
