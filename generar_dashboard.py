@@ -38,8 +38,15 @@ ZONE_COLORS = {1:'#4fc3f7', 2:'#81c784', 3:'#ffb74d', 4:'#f06292'}
 # LECTURA DE CSVs
 # ═══════════════════════════════════════════════
 def leer_carga(path):
-    df = pd.read_csv(path, skiprows=1, dtype=str)
-    df.columns = df.columns.str.strip()
+    try:
+        df = pd.read_csv(path, skiprows=1, dtype=str)
+        df.columns = df.columns.str.strip()
+        if 'Fase' not in df.columns:
+            df = pd.read_csv(path, dtype=str)
+            df.columns = df.columns.str.strip()
+    except:
+        df = pd.read_csv(path, dtype=str)
+        df.columns = df.columns.str.strip()
     for col in ['N° Partido','Fecha','Zona','GF','GC','PTS Local','PTS Visit.']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -47,8 +54,15 @@ def leer_carga(path):
     return df
 
 def leer_goles(path):
-    df = pd.read_csv(path, skiprows=1, dtype=str)
-    df.columns = df.columns.str.strip()
+    try:
+        df = pd.read_csv(path, skiprows=1, dtype=str)
+        df.columns = df.columns.str.strip()
+        if 'Jugador' not in df.columns:
+            df = pd.read_csv(path, dtype=str)
+            df.columns = df.columns.str.strip()
+    except:
+        df = pd.read_csv(path, dtype=str)
+        df.columns = df.columns.str.strip()
     for col in ['N° Partido','Fecha','Minuto']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
