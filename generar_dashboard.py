@@ -1905,8 +1905,8 @@ def generar_html(data, template_path, output_path):
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
     SHEET_ID = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
-    URL_CARGA = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
-    URL_GOLES = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
+    URL_CARGA = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=Carga'
+    URL_GOLES = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&sheet=Goles'
     template = Path('tfa2026_mini_template.html')
     output  = Path('index.html')
 
