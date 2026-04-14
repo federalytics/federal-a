@@ -37,32 +37,63 @@ ZONE_COLORS = {1:'#4fc3f7', 2:'#81c784', 3:'#ffb74d', 4:'#f06292'}
 # ═══════════════════════════════════════════════
 # LECTURA DE CSVs
 # ═══════════════════════════════════════════════
+def normalizar_columnas(df):
+    mapping = {}
+    for col in df.columns:
+        c = col.strip()
+        if 'Partido' in c:          mapping[col] = 'N° Partido'
+        elif c == 'Fecha':          mapping[col] = 'Fecha'
+        elif c == 'Fase':           mapping[col] = 'Fase'
+        elif 'a' in c and c.startswith('D') and len(c) <= 4: mapping[col] = 'Día'
+        elif c == 'Zona':           mapping[col] = 'Zona'
+        elif c == 'Local':          mapping[col] = 'Local'
+        elif c == 'GF':             mapping[col] = 'GF'
+        elif c == 'GC':             mapping[col] = 'GC'
+        elif c == 'Visitante':      mapping[col] = 'Visitante'
+        elif c == 'Resultado':      mapping[col] = 'Resultado'
+        elif 'PTS' in c and 'Local' in c:  mapping[col] = 'PTS Local'
+        elif 'PTS' in c and 'Visit' in c:  mapping[col] = 'PTS Visit.'
+        elif 'rbitro' in c:         mapping[col] = 'Árbitro'
+        elif c == 'Penales':        mapping[col] = 'Penales'
+        elif 'Equipo' in c and 'Local' in c:   mapping[col] = 'Equipo Local'
+        elif 'Equipo' in c and 'Visit' in c:   mapping[col] = 'Equipo Visitante'
+        elif 'convierte' in c:      mapping[col] = 'Equipo que convierte'
+        elif c == 'Jugador':        mapping[col] = 'Jugador'
+        elif 'Tiempo' in c:         mapping[col] = 'Tiempo'
+        elif 'Minuto' in c:         mapping[col] = 'Minuto'
+    return df.rename(columns=mapping)
+
 def leer_carga(path):
     try:
         df = pd.read_csv(path, skiprows=1, dtype=str, encoding='utf-8')
-        df.columns = df.columns.str.strip()
-        if 'Fase' not in df.columns:
-            df = pd.read_csv(path, dtype=str, encoding='utf-8')
-            df.columns = df.columns.str.strip()
     except:
-        df = pd.read_csv(path, dtype=str, encoding='utf-8')
-        df.columns = df.columns.str.strip()
+        df = pd.read_csv(path, skiprows=1, dtype=str)
+    df = normalizar_columnas(df)
+    if 'Fase' not in df.columns:
+        try:
+            df = pd.read_csv(path, dtype=str, encoding='utf-8')
+        except:
+            df = pd.read_csv(path, dtype=str)
+        df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Zona','GF','GC','PTS Local','PTS Visit.']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-    df['Fase'] = df['Fase'].str.strip()
+    if 'Fase' in df.columns:
+        df['Fase'] = df['Fase'].str.strip()
     return df
 
 def leer_goles(path):
     try:
         df = pd.read_csv(path, skiprows=1, dtype=str, encoding='utf-8')
-        df.columns = df.columns.str.strip()
-        if 'Jugador' not in df.columns:
-            df = pd.read_csv(path, dtype=str, encoding='utf-8')
-            df.columns = df.columns.str.strip()
     except:
-        df = pd.read_csv(path, dtype=str, encoding='utf-8')
-        df.columns = df.columns.str.strip()
+        df = pd.read_csv(path, skiprows=1, dtype=str)
+    df = normalizar_columnas(df)
+    if 'Jugador' not in df.columns:
+        try:
+            df = pd.read_csv(path, dtype=str, encoding='utf-8')
+        except:
+            df = pd.read_csv(path, dtype=str)
+        df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Minuto']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
