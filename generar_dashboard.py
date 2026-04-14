@@ -1890,26 +1890,22 @@ def generar_html(data, template_path, output_path):
 # MAIN
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
-    path_carga = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('tfa26_carga.csv')
-    path_goles = Path(sys.argv[2]) if len(sys.argv) > 2 else Path('tfa26_goles.csv')
-    template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
-    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('dashboard.html')
+    SHEET_ID = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
+    URL_CARGA = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
+    URL_GOLES = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
+    template = Path('tfa2026_mini_template.html')
+    output  = Path('index.html')
 
-    print(f"Leyendo {path_carga}...")
-    df_carga = leer_carga(path_carga)
-    print(f"Leyendo {path_goles}...")
-    df_goles = leer_goles(path_goles)
+    print('Leyendo Carga desde Google Sheets...')
+    df_carga = leer_carga(URL_CARGA)
+    print('Leyendo Goles desde Google Sheets...')
+    df_goles = leer_goles(URL_GOLES)
 
-    print("Calculando datos...")
+    print('Calculando datos...')
     data  = armar_datos(df_carga, df_goles)
     stats = data['stats']
-
-    print(f"  Fase activa  : {stats['fase_activa']}")
-    print(f"  Fecha        : {stats['fecha_actual']}/{stats['fecha_total']}")
-    print(f"  Partidos     : {stats['partidos_jugados']}")
-    print(f"  Goles        : {stats['total_goles']}")
-    if data['mejor_5to']:
-        m5 = data['mejor_5to']
-        print(f"  Mejor 5to    : {m5['nombre']} (Z{m5['from_zone']}, {m5['pts']}pts)")
+    print(f"  Fecha : {stats['fecha_actual']}/{stats['fecha_total']}")
+    print(f"  Partidos : {stats['partidos_jugados']}")
+    print(f"  Goles : {stats['total_goles']}")
 
     generar_html(data, template, output)
