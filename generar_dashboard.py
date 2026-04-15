@@ -1762,7 +1762,7 @@ def render_stats_full(data, fa):
         f'<tbody id="tg-body"></tbody>'
         f'</table></div>'
         f'<style>'
-        f'@media (max-width:600px) {{ #stats-scroll {{ max-height:224px }} }}'
+        f'@media (max-width:600px) {{ #stats-scroll {{ max-height:238px }} }}'
         f'</style>'
         f'<div style="font-size:10px;color:var(--t3);margin-top:6px">'
         f'LOCAL/VISITANTE recalcula todas las métricas · Click columna para ordenar'
