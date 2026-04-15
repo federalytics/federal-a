@@ -81,18 +81,29 @@ def normalizar_columnas(df):
     return df
 
 def leer_carga(path):
+    # Intentar con skiprows=1 (CSV local tiene fila título)
     df = pd.read_csv(path, skiprows=1, dtype=str)
     df.columns = df.columns.str.strip()
+    # Si no encontramos columnas esperadas, intentar sin skiprows (Sheet directo)
+    cols_l = [c.lower() for c in df.columns]
+    if not any('fase' in c or 'zona' in c or 'local' in c for c in cols_l):
+        df = pd.read_csv(path, skiprows=0, dtype=str)
+        df.columns = df.columns.str.strip()
     df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Zona','GF','GC','PTS Local','PTS Visit.']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-    df['Fase'] = df['Fase'].str.strip()
+    if 'Fase' in df.columns:
+        df['Fase'] = df['Fase'].str.strip()
     return df
 
 def leer_goles(path):
     df = pd.read_csv(path, skiprows=1, dtype=str)
     df.columns = df.columns.str.strip()
+    cols_l = [c.lower() for c in df.columns]
+    if not any('jugador' in c or 'minuto' in c or 'tiempo' in c for c in cols_l):
+        df = pd.read_csv(path, skiprows=0, dtype=str)
+        df.columns = df.columns.str.strip()
     df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Minuto']:
         if col in df.columns:
@@ -2006,10 +2017,10 @@ def generar_html(data, template_path, output_path):
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
     SHEET_ID   = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
-    path_carga = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
-    path_goles = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
-    template   = Path('tfa2026_mini_template.html')
-    output     = Path('index.html')
+    path_carga = sys.argv[1] if len(sys.argv) > 1 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
+    path_goles = sys.argv[2] if len(sys.argv) > 2 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
+    template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
+    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('index.html')
 
     print(f"Leyendo {path_carga}...")
     df_carga = leer_carga(path_carga)
