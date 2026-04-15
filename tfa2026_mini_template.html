@@ -159,7 +159,7 @@ tbody tr.tsep td { border-top: 1px solid var(--s3); }
 
 /* column widths */
 .col-n    { width: 20px; }
-.col-eq { min-width: 120px; width: 180px; }
+.col-eq   { min-width: 120px; }
 .col-pts  { width: 30px; }
 .col-pj   { width: 22px; }
 .col-gep  { width: 22px; }
@@ -373,6 +373,9 @@ tbody tr.tsep td { border-top: 1px solid var(--s3); }
   .col-racha { width: 48px; }
   .rch  { width: 7px; height: 7px; }
   .racha { gap: 2px; }
+}
+@media (min-width: 721px) {
+  .tab-pane { max-width: 960px; margin: 0 auto; }
 }
 </style>
 </head>
