@@ -2008,7 +2008,7 @@ if __name__ == '__main__':
     path_carga = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('tfa26_carga.csv')
     path_goles = Path(sys.argv[2]) if len(sys.argv) > 2 else Path('tfa26_goles.csv')
     template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
-    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('dashboard.html')
+    output = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('index.html')
 
     print(f"Leyendo {path_carga}...")
     df_carga = leer_carga(path_carga)
