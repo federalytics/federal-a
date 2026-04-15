@@ -2006,10 +2006,10 @@ def generar_html(data, template_path, output_path):
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
     SHEET_ID   = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
-    path_carga = sys.argv[1] if len(sys.argv) > 1 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
-    path_goles = sys.argv[2] if len(sys.argv) > 2 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
-    template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
-    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('index.html')
+    path_carga = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
+    path_goles = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
+    template   = Path('tfa2026_mini_template.html')
+    output     = Path('index.html')
 
     print(f"Leyendo {path_carga}...")
     df_carga = leer_carga(path_carga)
