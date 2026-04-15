@@ -22,7 +22,7 @@ jobs:
 
       - run: pip install pandas
 
-      - run: python generar_dashboard.py "https://docs.google.com/spreadsheets/d/1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q/gviz/tq?tqx=out:csv&sheet=Carga" "https://docs.google.com/spreadsheets/d/1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q/gviz/tq?tqx=out:csv&sheet=Goles"
+      - run: python generar_dashboard.py 'https://docs.google.com/spreadsheets/d/1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q/gviz/tq?tqx=out:csv&sheet=Carga' 'https://docs.google.com/spreadsheets/d/1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q/gviz/tq?tqx=out:csv&sheet=Goles'
 
       - run: |
           git config user.name "github-actions"
