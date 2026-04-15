@@ -38,62 +38,62 @@ ZONE_COLORS = {1:'#4fc3f7', 2:'#81c784', 3:'#ffb74d', 4:'#f06292'}
 # LECTURA DE CSVs
 # ═══════════════════════════════════════════════
 def normalizar_columnas(df):
-    mapping = {}
+    """Mapea columnas por contenido parcial para tolerar encoding roto de Google Sheets."""
+    # Solo se activa si la columna canónica NO existe ya en el df
+    mapa = {
+        'N° Partido':           ['partid'],
+        'Fase':                 ['fase'],
+        'Zona':                 ['zona'],
+        'GF':                   ['^gf$'],
+        'GC':                   ['^gc$'],
+        'PTS Local':            ['pts local', 'pts_local'],
+        'PTS Visit.':           ['pts visit', 'pts_visit'],
+        'Árbitro':              ['rbitro', 'arbitro'],
+        'Penales':              ['penales'],
+        'Equipo que convierte': ['convierte'],
+        'Jugador':              ['^jugador$'],
+        'Tiempo':               ['^tiempo$'],
+        'Minuto':               ['^minuto$'],
+    }
+    import re as _re
+    rename = {}
+    existing = set(df.columns)
     for col in df.columns:
-        c = col.strip()
-        if 'Partido' in c:          mapping[col] = 'N° Partido'
-        elif c == 'Fecha':          mapping[col] = 'Fecha'
-        elif c == 'Fase':           mapping[col] = 'Fase'
-        elif 'a' in c and c.startswith('D') and len(c) <= 4: mapping[col] = 'Día'
-        elif c == 'Zona':           mapping[col] = 'Zona'
-        elif c == 'Local':          mapping[col] = 'Local'
-        elif c == 'GF':             mapping[col] = 'GF'
-        elif c == 'GC':             mapping[col] = 'GC'
-        elif c == 'Visitante':      mapping[col] = 'Visitante'
-        elif c == 'Resultado':      mapping[col] = 'Resultado'
-        elif 'PTS' in c and 'Local' in c:  mapping[col] = 'PTS Local'
-        elif 'PTS' in c and 'Visit' in c:  mapping[col] = 'PTS Visit.'
-        elif 'rbitro' in c:         mapping[col] = 'Árbitro'
-        elif c == 'Penales':        mapping[col] = 'Penales'
-        elif 'Equipo' in c and 'Local' in c:   mapping[col] = 'Equipo Local'
-        elif 'Equipo' in c and 'Visit' in c:   mapping[col] = 'Equipo Visitante'
-        elif 'convierte' in c:      mapping[col] = 'Equipo que convierte'
-        elif c == 'Jugador':        mapping[col] = 'Jugador'
-        elif 'Tiempo' in c:         mapping[col] = 'Tiempo'
-        elif 'Minuto' in c:         mapping[col] = 'Minuto'
-    return df.rename(columns=mapping)
+        col_l = col.lower().strip()
+        for canonical, patrones in mapa.items():
+            if canonical in existing:
+                continue
+            for p in patrones:
+                if p.startswith('^'):
+                    if _re.fullmatch(p[1:-1], col_l):
+                        rename[col] = canonical
+                        existing.add(canonical)
+                        break
+                else:
+                    if p in col_l:
+                        rename[col] = canonical
+                        existing.add(canonical)
+                        break
+            if col in rename:
+                break
+    if rename:
+        df = df.rename(columns=rename)
+    return df
 
 def leer_carga(path):
-    try:
-        df = pd.read_csv(path, skiprows=1, dtype=str, encoding='utf-8')
-    except:
-        df = pd.read_csv(path, skiprows=1, dtype=str)
+    df = pd.read_csv(path, skiprows=1, dtype=str)
+    df.columns = df.columns.str.strip()
     df = normalizar_columnas(df)
-    if 'Fase' not in df.columns:
-        try:
-            df = pd.read_csv(path, dtype=str, encoding='utf-8')
-        except:
-            df = pd.read_csv(path, dtype=str)
-        df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Zona','GF','GC','PTS Local','PTS Visit.']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-    if 'Fase' in df.columns:
-        df['Fase'] = df['Fase'].str.strip()
+    df['Fase'] = df['Fase'].str.strip()
     return df
 
 def leer_goles(path):
-    try:
-        df = pd.read_csv(path, skiprows=1, dtype=str, encoding='utf-8')
-    except:
-        df = pd.read_csv(path, skiprows=1, dtype=str)
+    df = pd.read_csv(path, skiprows=1, dtype=str)
+    df.columns = df.columns.str.strip()
     df = normalizar_columnas(df)
-    if 'Jugador' not in df.columns:
-        try:
-            df = pd.read_csv(path, dtype=str, encoding='utf-8')
-        except:
-            df = pd.read_csv(path, dtype=str)
-        df = normalizar_columnas(df)
     for col in ['N° Partido','Fecha','Minuto']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -672,6 +672,156 @@ def calcular_stats(df_carga, df_goles):
     }
 
 # ═══════════════════════════════════════════════
+# GOLEADORES FULL (con zona)
+# ═══════════════════════════════════════════════
+def calcular_goleadores_full(df_carga, df_goles):
+    zona_p = {}
+    for _, r in df_carga.iterrows():
+        nro = r.get('N° Partido')
+        if pd.notna(nro):
+            zona_p[int(nro)] = int(r['Zona']) if pd.notna(r.get('Zona')) else 0
+
+    df = df_goles.copy()
+    df['N° Partido'] = pd.to_numeric(df['N° Partido'], errors='coerce')
+    df['zona'] = df['N° Partido'].apply(
+        lambda x: zona_p.get(int(x), 0) if pd.notna(x) else 0)
+    df = df[~df['Jugador'].str.contains(r'\(e/c\)', na=False)].copy()
+    df['jugador_l'] = (df['Jugador']
+        .str.replace(r'\s*\(e/c\)\s*', '', regex=True)
+        .str.replace(r'\s*\(p\)\s*', '', regex=True)
+        .str.strip())
+    df['es_penal'] = df['Jugador'].str.contains(r'\(p\)', na=False)
+
+    result = []
+    for (jug, eq), grp in df.groupby(['jugador_l', 'Equipo que convierte']):
+        zona = int(grp['zona'].mode()[0]) if len(grp) else 0
+        result.append({
+            'jugador': jug,
+            'equipo':  eq,
+            'zona':    zona,
+            'goles':   len(grp),
+            'penales': int(grp['es_penal'].sum()),
+        })
+    result.sort(key=lambda x: (-x['goles'], x['jugador']))
+    return result
+
+
+def render_goleadores_tab(data):
+    import json as _json
+    from collections import defaultdict
+
+    goleadores = data.get('goleadores_full', [])
+    stats_eq   = data.get('stats_equipos', [])
+
+    ZC = {1:'#29b6f6', 2:'#66bb6a', 3:'#ff7043', 4:'#f06292'}
+
+    # Goleadores distintos por equipo
+    dist_map = defaultdict(set)
+    for g in goleadores:
+        dist_map[g['equipo']].add(g['jugador'])
+
+    equipos = []
+    for t in stats_eq:
+        if t['pj'] > 0:
+            equipos.append({
+                'nombre':    t['nombre'],
+                'zona':      t['zona'],
+                'gf':        t['gf'],
+                'gf_pj':     round(t['gf_pj'], 2),
+                'distintos': len(dist_map.get(t['nombre'], set())),
+            })
+    equipos.sort(key=lambda x: (-x['gf'], -x['gf_pj']))
+
+    gol_js = _json.dumps(goleadores, ensure_ascii=False, default=str)
+    eq_js  = _json.dumps(equipos,    ensure_ascii=False, default=str)
+    zc_js  = _json.dumps(ZC)
+
+    filtros = (
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'
+        '<button class="tbtn active" data-gz="GLOBAL">GLOBAL</button>'
+        '<button class="tbtn" data-gz="1" style="color:#29b6f6;border-color:#29b6f6">Z1</button>'
+        '<button class="tbtn" data-gz="2" style="color:#66bb6a;border-color:#66bb6a">Z2</button>'
+        '<button class="tbtn" data-gz="3" style="color:#ff7043;border-color:#ff7043">Z3</button>'
+        '<button class="tbtn" data-gz="4" style="color:#f06292;border-color:#f06292">Z4</button>'
+        '<button class="tbtn" data-gz="EQUIPOS">EQUIPOS</button>'
+        '</div>'
+    )
+
+    contenedor = '<div id="gz-lista" style="display:flex;flex-direction:column"></div>'
+
+    js = f"""<script>
+(function(){{
+  var GOL={gol_js};
+  var EQ={eq_js};
+  var ZC={zc_js};
+  var vista='GLOBAL';
+
+  document.querySelectorAll('.tbtn[data-gz]').forEach(function(b){{
+    b.addEventListener('click',function(){{
+      document.querySelectorAll('.tbtn[data-gz]').forEach(function(x){{x.classList.remove('active');}});
+      this.classList.add('active');
+      vista=this.dataset.gz;
+      render();
+    }});
+  }});
+
+  var BD='border-bottom:1px solid var(--s3)';
+  var ROW='display:flex;align-items:center;gap:10px;padding:9px 0;'+BD;
+  var POS='font-family:var(--mono);font-size:11px;color:var(--tn);width:18px;text-align:right;flex-shrink:0';
+  var INFO='flex:1;min-width:0';
+  var NAME='font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  var SUB='font-size:10px;color:var(--t3);margin-top:2px';
+  var NUM_BIG='font-family:var(--mono);font-size:20px;font-weight:500;color:var(--t1);line-height:1';
+  var NUM_SUB='font-size:9px;color:var(--t3);text-align:right;margin-top:2px';
+
+  function render(){{
+    var lista=document.getElementById('gz-lista');
+    var html='';
+
+    if(vista==='EQUIPOS'){{
+      EQ.forEach(function(t,i){{
+        var zc=ZC[t.zona]||'#888';
+        var sub='<span style="color:'+zc+'">Z'+t.zona+'</span>'+' · '+t.gf_pj.toFixed(2)+'/PJ · '+t.distintos+' goleadores';
+        html+='<div style="'+ROW+'">'+
+          '<div style="'+POS+'">'+( i+1)+'</div>'+
+          '<div style="'+INFO+'">'+
+            '<div style="'+NAME+'">'+t.nombre+'</div>'+
+            '<div style="'+SUB+'">'+sub+'</div>'+
+          '</div>'+
+          '<div style="flex-shrink:0;text-align:right">'+
+            '<div style="'+NUM_BIG+'">'+t.gf+'</div>'+
+            '<div style="'+NUM_SUB+'">goles</div>'+
+          '</div>'+
+        '</div>';
+      }});
+    }} else {{
+      var filas=vista==='GLOBAL'?GOL:GOL.filter(function(g){{return String(g.zona)===vista;}});
+      filas.forEach(function(g,i){{
+        var zc=ZC[g.zona]||'#888';
+        var sub=g.equipo+' · <span style="color:'+zc+'">Z'+g.zona+'</span>';
+        var pen=g.penales>0?'<div style="'+NUM_SUB+'">'+g.penales+'p</div>':'<div style="'+NUM_SUB+'"> </div>';
+        html+='<div style="'+ROW+'">'+
+          '<div style="'+POS+'">'+( i+1)+'</div>'+
+          '<div style="'+INFO+'">'+
+            '<div style="'+NAME+'">'+g.jugador+'</div>'+
+            '<div style="'+SUB+'">'+sub+'</div>'+
+          '</div>'+
+          '<div style="flex-shrink:0;text-align:right">'+
+            '<div style="'+NUM_BIG+'">'+g.goles+'</div>'+
+            pen+
+          '</div>'+
+        '</div>';
+      }});
+    }}
+    lista.innerHTML=html;
+  }}
+  render();
+}})();
+</script>"""
+
+    return filtros + contenedor + js
+
+# ═══════════════════════════════════════════════
 # ARMAR DATOS COMPLETOS
 # ═══════════════════════════════════════════════
 def armar_datos(df_carga, df_goles):
@@ -787,70 +937,78 @@ def chip_1f(zona, pos, mejor_5to_nombre, nombre):
     if zona in [3, 4]: return '<span class="chip c-rb">REV·B</span>'
     return '<span class="chip c-ra">REV·A</span>'
 
+# ═══════════════════════════════════════════════
+# RENDER — ZONA 1F  (reemplaza la función existente)
+# Columnas: # | Equipo | PTS | PJ | G | E | P | GOL | DG | RACHA
+# RACHA se llena con JS desde PERFILES_JSON
+# ═══════════════════════════════════════════════
 def render_zona_1f(z, data, mejor_5to_nombre):
     color    = ZONE_COLORS.get(z, '#888')
     q        = ZONA_CONFIG[z]['qualify']
     dest_2f  = ZONA_CONFIG[z]['dest_2f']
-    dest_rev = 'A' if z in [1,2] else 'B'
+    dest_rev = 'A' if z in [1, 2] else 'B'
 
     ZONE_RGBA = {
-        1: 'rgba(2,136,209,.07)',
-        2: 'rgba(46,125,50,.07)',
-        3: 'rgba(230,81,0,.07)',
-        4: 'rgba(194,24,91,.07)',
+        1: 'rgba(41,182,246,.09)',
+        2: 'rgba(102,187,106,.09)',
+        3: 'rgba(255,112,67,.09)',
+        4: 'rgba(242,98,146,.09)',
     }
+    tint = ZONE_RGBA.get(z, 'transparent')
 
     rows = ''
     for i, t in enumerate(data):
-        pos  = i + 1
-        dg   = t['gf'] - t['gc']
-        dgc  = 'gp' if dg > 0 else ('gn' if dg < 0 else 'gz')
-        dgs  = f'+{dg}' if dg > 0 else ('—' if dg == 0 else str(dg))
-        sep  = ' class="tsep"' if pos == q + 1 else ''
-        es_mejor_5to = t['nombre'] == mejor_5to_nombre
-        if pos <= q or es_mejor_5to:
-            bg = f'background:{ZONE_RGBA.get(z, "transparent")}'
-        else:
-            bg = ''
-        rows += (f'<tr{sep} data-equipo="{t["nombre"]}" style="cursor:pointer;{bg}">'
-                 f'<td class="n">{pos}</td>'
-                 f'<td class="l">{t["nombre"]}</td>'
-                 f'<td style="text-align:right">{t["pj"]}</td>'
-                 f'<td class="p">{t["pts"]}</td>'
-                 f'<td style="text-align:right">{t["pg"]}</td>'
-                 f'<td style="text-align:right">{t["pe"]}</td>'
-                 f'<td style="text-align:right">{t["pp"]}</td>'
-                 f'<td class="col-gf" style="text-align:right">{t["gf"]}</td>'
-                 f'<td class="col-gc" style="text-align:right">{t["gc"]}</td>'
-                 f'<td class="col-gfgc" style="text-align:center">{t["gf"]}:{t["gc"]}</td>'
-                 f'<td class="{dgc}">{dgs}</td>'
-                 f'</tr>')
-    return (f'<div class="zcard">'
-            f'<div class="zhdr">'
-            f'<div class="zdot" style="background:{color}"></div>'
-            f'<div class="zname" style="color:{color}">Zona {z}</div>'
-            f'<div class="zmeta">{len(data)} eq · Top {q} → 2F·{dest_2f} · Resto → REV·{dest_rev}</div>'
-            f'</div>'
-            f'<div class="tscroll"><table>'
-            f'<thead><tr>'
-            f'<th class="c">#</th><th class="l">Equipo</th>'
-            f'<th style="text-align:right">PJ</th>'
-            f'<th style="text-align:right">PTS</th>'
-            f'<th style="text-align:right">G</th>'
-            f'<th style="text-align:right">E</th>'
-            f'<th style="text-align:right">P</th>'
-            f'<th class="col-gf" style="text-align:right">GF</th>'
-            f'<th class="col-gc" style="text-align:right">GC</th>'
-            f'<th class="col-gfgc" style="text-align:center">GOL</th>'
-            f'<th style="text-align:right">DG</th>'
-            f'</tr></thead>'
-            f'<tbody>{rows}</tbody>'
-            f'</table></div>'
-            f'</div>')
+        pos          = i + 1
+        nombre       = t['nombre']
+        dg           = t['gf'] - t['gc']
+        dgs          = ('+' + str(dg)) if dg > 0 else ('—' if dg == 0 else str(dg))
+        dgc          = 'dg-pos' if dg > 0 else ('dg-neg' if dg < 0 else 'dg-zer')
+        sep          = ' class="tsep"' if pos == q + 1 else ''
+        es_mejor_5to = (nombre == mejor_5to_nombre)
+        clasifica    = (pos <= q) or es_mejor_5to
+        bg           = f'background:{tint}' if clasifica else ''
 
-# ═══════════════════════════════════════════════
-# RENDER — STATS EQUIPOS (NUEVO)
-# ═══════════════════════════════════════════════
+        rows += (
+            f'<tr{sep} data-equipo="{nombre}" style="{bg}">'
+            f'<td class="td-n col-n">{pos}</td>'
+            f'<td class="td-l col-eq">{nombre}</td>'
+            f'<td class="td-pts col-pts" style="text-align:right">{t["pts"]}</td>'
+            f'<td class="col-pj" style="text-align:right">{t["pj"]}</td>'
+            f'<td class="col-gep" style="text-align:right">{t["pg"]}</td>'
+            f'<td class="col-gep" style="text-align:right">{t["pe"]}</td>'
+            f'<td class="col-gep" style="text-align:right">{t["pp"]}</td>'
+            f'<td class="td-c col-gol">{t["gf"]}:{t["gc"]}</td>'
+            f'<td class="col-dg {dgc}" style="text-align:right">{dgs}</td>'
+            f'<td class="col-racha td-c"></td>'
+            f'</tr>'
+        )
+
+    return (
+        f'<div class="zcard">'
+        f'<div class="zhdr">'
+        f'<div class="zdot" style="background:{color}"></div>'
+        f'<div class="zname" style="color:{color}">Zona {z}</div>'
+        f'<div class="zmeta">{len(data)} eq · Top {q} → 2F·{dest_2f} · Resto → REV·{dest_rev}</div>'
+        f'</div>'
+        f'<div class="tscroll"><table>'
+        f'<thead><tr>'
+        f'<th class="th-c col-n">#</th>'
+        f'<th class="th-l col-eq">Equipo</th>'
+        f'<th style="text-align:right">PTS</th>'
+        f'<th style="text-align:right">PJ</th>'
+        f'<th style="text-align:right">G</th>'
+        f'<th style="text-align:right">E</th>'
+        f'<th style="text-align:right">P</th>'
+        f'<th style="text-align:center">GOL</th>'
+        f'<th style="text-align:right">DG</th>'
+        f'<th class="th-c" style="text-align:center">RACHA</th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table></div>'
+        f'</div>'
+    )
+
+
 def render_stats_ataque(stats_equipos):
     ordenados = sorted(stats_equipos, key=lambda x: (-x['gf'], -x['gf_pj']))
     rows = ''
@@ -1499,94 +1657,22 @@ def calcular_stats_duras(df_carga, df_goles):
 
 
 
+# ═══════════════════════════════════════════════
+# RENDER — STATS FULL  (reemplaza la función existente)
+# Columnas: EQUIPO | Z | PTS/PJ | %RDT | GF/PJ | GC/PJ | %G | %E | %P
+# ═══════════════════════════════════════════════
 def render_stats_full(data, fa):
-    sd        = data.get('stats_duras', {})
-    globales  = sd.get('globales', [])
-    por_fecha = sd.get('por_fecha', [])
-    por_zona  = sd.get('por_zona', [])
-    se        = data.get('stats_equipos', [])
-
     import json as _json
 
-    # ── helpers de estilo
-    BD = 'border-bottom:1px solid var(--s3)'
-    def subtitulo(txt, sub=''):
-        s = f' <span style="color:var(--t3);font-size:10px;font-weight:400;letter-spacing:0">{sub}</span>' if sub else ''
-        return (f'<div style="font-family:var(--grotesk);font-size:10px;font-weight:500;'
-                f'letter-spacing:.12em;color:var(--t3);text-transform:uppercase;'
-                f'margin:20px 0 8px;padding-bottom:5px;{BD}">'
-                f'{txt}{s}</div>')
-    def th(label, align='right'):
-        return (f'<th style="padding:5px 14px 5px 0;text-align:{align};'
-                f'color:var(--t3);font-size:10px;letter-spacing:.06em;'
-                f'font-weight:400;white-space:nowrap;{BD}">{label}</th>')
-    def td_l(v): return f'<td style="padding:4px 14px 4px 0;color:var(--t1);{BD};white-space:nowrap">{v}</td>'
-    def td_r(v): return f'<td style="padding:4px 14px 4px 0;text-align:right;color:var(--t2);{BD};white-space:nowrap">{v}</td>'
-    def td_a(v): return f'<td style="padding:4px 14px 4px 0;text-align:right;color:var(--acc);font-weight:500;{BD};white-space:nowrap">{v}</td>'
+    se         = data.get('stats_equipos', [])
+    filas_json = _json.dumps(se, ensure_ascii=False, default=str)
+    zcolors_js = _json.dumps({1: '#29b6f6', 2: '#66bb6a', 3: '#ff7043', 4: '#f06292'})
 
-    # ── GLOBALES
-    def _td_ext(ext):
-        if ext:
-            return '<td style="padding:4px 0;color:var(--t3);font-size:10px">' + str(ext) + '</td>'
-        return ''
-    rows = ''.join(
-        f'<tr>{td_l(lbl)}{td_a(val)}{_td_ext(ext)}</tr>'
-        for lbl, val, ext in globales
-    )
-    tabla_global = (f'<div class="zcard"><div class="tscroll">'
-                    f'<table><tbody>{rows}</tbody></table></div></div>')
-
-    # ── POR FECHA
-    hdr_f = ('<thead><tr>'
-             + th('#')
-             + th('PJ') + th('Goles') + th('Prom')
-             + th('L') + th('E') + th('V')
-             + th('GL') + th('GV') + th('Max')
-             + '</tr></thead>')
-    rows_f = ''.join(
-        f'<tr>{td_a("F"+str(f["fecha"]))}'
-        f'{td_r(f["partidos"])}{td_r(f["goles"])}{td_r(f["prom"])}'
-        f'{td_r(f["loc_g"])}{td_r(f["emp"])}{td_r(f["vis_g"])}'
-        f'{td_r(f["goles_loc"])}{td_r(f["goles_vis"])}{td_r(f["max_g"])}'
-        f'</tr>'
-        for f in por_fecha
-    )
-    tabla_fecha = (f'<div class="zcard"><div class="tscroll">'
-                   f'<table>{hdr_f}<tbody>{rows_f}</tbody></table></div></div>')
-
-    # ── POR ZONA
-    znames  = {1:'Zona 1', 2:'Zona 2', 3:'Zona 3', 4:'Zona 4'}
-    zcolors = {1:'var(--z1)', 2:'var(--z2)', 3:'var(--z3)', 4:'var(--z4)'}
-    hdr_z = ('<thead><tr>'
-             + th('Zona', 'left')
-             + th('PJ') + th('Goles') + th('Prom')
-             + th('L') + th('E') + th('V')
-             + th('GL') + th('GV')
-             + '</tr></thead>')
-    rows_z = ''.join(
-        f'<tr><td style="padding:4px 14px 4px 0;color:{zcolors.get(z["zona"],"var(--t1)")};'
-        f'font-weight:500;{BD};white-space:nowrap">{znames.get(z["zona"],z["zona"])}</td>'
-        f'{td_r(z["partidos"])}{td_r(z["goles"])}{td_r(z["prom"])}'
-        f'{td_r(z["loc_g"])}{td_r(z["emp"])}{td_r(z["vis_g"])}'
-        f'{td_r(z["goles_loc"])}{td_r(z["goles_vis"])}'
-        f'</tr>'
-        for z in por_zona
-    )
-    tabla_zona = (f'<div class="zcard"><div class="tscroll">'
-                  f'<table>{hdr_z}<tbody>{rows_z}</tbody></table></div></div>')
-    leyenda = ('<div style="font-size:10px;color:var(--t3);margin-top:8px">'
-               'L=local gana · E=empate · V=visitante gana · GL=goles local · GV=goles visitante · Max=máx goles en partido'
-               '</div>')
-
-    # ── TABLA GENERAL — sortable + freeze + filtros FASE × CONDICIÓN
     TODAS_FASES   = ['1F', '2F', 'REV-1']
-    FASE_LABELS   = {'1F-RR2':'1F', '1F':'1F', '2F-RR1':'2F', 'REV-1-RR1':'REV-1'}
     fases_disp    = sorted({t.get('fase_actual', '1F') for t in se})
     fases_activas = set(fases_disp)
-    filas_json    = _json.dumps(se, ensure_ascii=False, default=str)
-    zcolors_js    = _json.dumps({1:'#0288d1', 2:'#2e7d32', 3:'#e65100', 4:'#c2185b'})
 
-    # Select nativo FASE — siempre visible, options deshabilitadas si no hay datos
+    # FASE select
     options = '<option value="TODAS">TODAS LAS FASES</option>'
     for f in TODAS_FASES:
         if f in fases_activas:
@@ -1594,246 +1680,233 @@ def render_stats_full(data, fa):
         else:
             options += f'<option value="{f}" disabled>{f} —</option>'
 
-    select_fase = (f'<select id="sel-fase" style="font-family:var(--grotesk);font-size:10px;'
-                   f'padding:3px 8px;border:1px solid var(--s3);border-radius:2px;'
-                   f'background:var(--bg);color:var(--t1);cursor:pointer;letter-spacing:.04em">'
-                   f'{options}</select>')
+    select_fase = (
+        f'<select id="sel-fase" style="font-family:var(--grotesk);font-size:10px;'
+        f'padding:3px 8px;border:1px solid var(--s3);border-radius:2px;'
+        f'background:var(--s1);color:var(--t1);cursor:pointer;letter-spacing:.04em">'
+        f'{options}</select>'
+    )
 
-    filtros_cond = ('<div style="display:flex;gap:4px;flex-wrap:wrap">'
-                    '<button class="tbtn active" data-grupo="cond" data-val="GLOBAL">GLOBAL</button>'
-                    '<button class="tbtn" data-grupo="cond" data-val="LOCAL">LOCAL</button>'
-                    '<button class="tbtn" data-grupo="cond" data-val="VISITANTE">VISITANTE</button>'
-                    '</div>')
+    btn_cond = (
+        '<div style="display:flex;gap:4px">'
+        '<button class="tbtn active" data-g="cond" data-v="GLOBAL">GLOBAL</button>'
+        '<button class="tbtn" data-g="cond" data-v="LOCAL">LOCAL</button>'
+        '<button class="tbtn" data-g="cond" data-v="VISITANTE">VISITANTE</button>'
+        '</div>'
+    )
 
-    filtros_wrap = (f'<div style="display:flex;gap:12px;align-items:center;'
-                    f'margin-bottom:10px;flex-wrap:wrap">'
-                    f'{select_fase}'
-                    f'<div style="width:1px;height:20px;background:var(--s3)"></div>'
-                    f'{filtros_cond}'
-                    f'<div style="width:1px;height:20px;background:var(--s3)"></div>'
-                    f'<button id="btn-h2h" class="tbtn{"" if fa>=3 else " disabled"}" '
-                    f'style="letter-spacing:.06em{"" if fa>=3 else ";opacity:.35;pointer-events:none;cursor:default"}" '
-                    f'title="{"Comparativa de métricas TFA 2026" if fa>=3 else "Disponible a partir de la fecha 3"}">H2H 2026</button>'
-                    f'<span id="h2h-hint" style="display:none;font-size:10px;color:var(--acc);letter-spacing:.04em"></span>'
-                    + ('' if fa>=3 else '<span style="font-size:10px;color:var(--t3);letter-spacing:.04em">disponible desde F3</span>')
-                    + '</div>')
+    h2h_disabled = '' if fa >= 3 else ' disabled'
+    h2h_hint_txt = '' if fa >= 3 else '<span style="font-size:10px;color:var(--t3)">disponible desde F3</span>'
+    btn_h2h      = (
+        f'<button id="btn-h2h" class="tbtn{h2h_disabled}" '
+        f'style="letter-spacing:.06em">H2H 2026</button>'
+        f'<span id="h2h-hint" style="display:none;font-size:10px;color:var(--acc)"></span>'
+    )
 
-    def th_s(col, label, asc='false'):
-        return (f'<th data-col="{col}" data-asc="{asc}" style="position:sticky;top:0;'
-                f'background:var(--s2);padding:5px 12px;text-align:right;color:var(--t3);'
-                f'font-weight:400;font-size:10px;letter-spacing:.06em;white-space:nowrap;'
-                f'{BD};cursor:pointer;user-select:none;z-index:1">'
-                f'{label} <span class="si">↕</span></th>')
+    filtros = (
+        f'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
+        f'{select_fase}'
+        f'<div style="width:1px;height:20px;background:var(--s3)"></div>'
+        f'{btn_cond}'
+        f'<div style="width:1px;height:20px;background:var(--s3)"></div>'
+        f'{btn_h2h}{h2h_hint_txt}'
+        f'</div>'
+    )
 
-    thead_gral = (
+    BD   = 'border-bottom:1px solid var(--s3)'
+    stk  = f'position:sticky;top:0;background:var(--s2);{BD};z-index:1'
+    stk3 = f'position:sticky;left:0;top:0;background:var(--s2);{BD};border-right:1px solid var(--s3);z-index:3'
+
+    def th(col, label, asc='false'):
+        return (
+            f'<th data-col="{col}" data-asc="{asc}" '
+            f'style="{stk};padding:5px 10px;text-align:right;color:var(--t3);'
+            f'font-family:var(--grotesk);font-size:10px;font-weight:400;letter-spacing:.06em;'
+            f'white-space:nowrap;cursor:pointer;user-select:none">'
+            f'{label} <span class="si">↕</span></th>'
+        )
+
+    thead = (
         '<thead><tr>'
-        '<th data-col="nombre" data-asc="true" style="position:sticky;left:0;top:0;'
-        'background:var(--s2);padding:5px 12px;text-align:left;color:var(--t3);'
-        f'font-weight:400;font-size:10px;letter-spacing:.06em;white-space:nowrap;{BD};'
-        'border-right:1px solid var(--s3);cursor:pointer;user-select:none;z-index:3">'
-        'EQUIPO <span class="si">↕</span></th>'
-        + th_s('zona',   'Z',      'true')
-        + th_s('pj',     'PJ',     'true')
-        + th_s('pts',    'PTS',    'false')
-        + th_s('pts_pj', 'PTS/PJ', 'false')
-        + th_s('rdt',    '%RDT',   'false')
-        + th_s('gf_pj',  'GF/PJ',  'false')
-        + th_s('gc_pj',  'GC/PJ',  'true')
-        + th_s('dg',     'DG',     'false')
-        + th_s('pct_g',  '%G',     'false')
-        + th_s('pct_e',  '%E',     'false')
-        + th_s('pct_p',  '%P',     'true')
+        f'<th data-col="nombre" data-asc="true" style="{stk3};padding:5px 12px;text-align:left;'
+        f'color:var(--t3);font-family:var(--grotesk);font-size:10px;font-weight:400;'
+        f'letter-spacing:.06em;white-space:nowrap;cursor:pointer;user-select:none;min-width:140px">'
+        f'EQUIPO <span class="si">↕</span></th>'
+        + th('zona',    'Z',      'true')
+        + th('pts_pj',  'PTS/PJ', 'false')
+        + th('rdt',     '%RDT',   'false')
+        + th('gf_pj',   'GF/PJ',  'false')
+        + th('gc_pj',   'GC/PJ',  'true')
+        + th('pct_g',   '%G',     'false')
+        + th('pct_e',   '%E',     'false')
+        + th('pct_p',   '%P',     'true')
         + '</tr></thead>'
     )
 
-    tabla_gral = f'''{filtros_wrap}
-<div style="min-height:520px;max-height:520px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--s3);border-radius:4px">
-  <table id="tabla-gral" style="font-size:11px;width:100%;border-collapse:collapse">
-    {thead_gral}
-    <tbody id="tg-body"></tbody>
-  </table>
-</div>
-<div style="font-size:10px;color:var(--t3);margin-top:6px">
-  POS=posición en zona · %RDT=rendimiento general · LOCAL/VISITANTE recalcula todas las métricas · Click columna para ordenar
-</div>
-<style>
-.tbtn{{font-family:var(--grotesk);font-size:10px;padding:3px 10px;border:1px solid var(--s3);
-  border-radius:2px;background:transparent;color:var(--t3);cursor:pointer;letter-spacing:.06em}}
-.tbtn:hover{{color:var(--t1);border-color:var(--t2)}}
-.tbtn.active{{background:var(--t1);color:var(--bg);border-color:var(--t1);font-weight:500}}
-.tbtn.disabled{{opacity:.35;pointer-events:none;cursor:default}}
-@media(max-width:600px){{
-  .tbtn{{font-size:10px;padding:4px 8px;min-height:0}}
-  #btn-h2h{{font-size:10px;padding:4px 8px}}
-  #sel-fase{{font-size:11px;padding:7px 10px;min-height:36px}}
-}}
-</style>
-<script>
+    tabla = (
+        f'<div id="stats-scroll" style="overflow:auto;-webkit-overflow-scrolling:touch;'
+        f'overscroll-behavior:contain;border:1px solid var(--s3);border-radius:3px">'
+        f'<table id="tabla-gral" style="font-size:11px;width:100%;border-collapse:collapse">'
+        f'{thead}'
+        f'<tbody id="tg-body"></tbody>'
+        f'</table></div>'
+        f'<style>'
+        f'@media (max-width:600px) {{ #stats-scroll {{ max-height:224px }} }}'
+        f'</style>'
+        f'<div style="font-size:10px;color:var(--t3);margin-top:6px">'
+        f'LOCAL/VISITANTE recalcula todas las métricas · Click columna para ordenar'
+        f'</div>'
+    )
+
+    js = f'''<script>
 (function(){{
+  var FILAS={filas_json};
+  var ZC={zcolors_js};
+  var sortCol='pts_pj', sortAsc=false;
+  var faseA='TODAS', condA='GLOBAL';
+  var h2hMode=false, h2hSel=[], h2hAsig=false;
+
   document.getElementById('sel-fase').addEventListener('change', function(){{
-    window._tgSetFase(this.value);
+    faseA=this.value; render();
   }});
-  const FILAS={filas_json};
-  const ZC={zcolors_js};
-  let sortCol='pts', sortAsc=false, faseActual='TODAS', condActual='GLOBAL';
-  window._tgSetFase = function(v){{ faseActual=v; render(); }};
-  window._tgRender  = function(){{ render(); }};
+
+  document.querySelectorAll('.tbtn[data-g="cond"]').forEach(function(b){{
+    b.addEventListener('click', function(){{
+      document.querySelectorAll('.tbtn[data-g="cond"]').forEach(function(x){{x.classList.remove('active');}});
+      this.classList.add('active');
+      condA=this.dataset.v; render();
+    }});
+  }});
 
   function metricas(t, cond){{
-    let pj, pts, gf, gc;
-    if(cond==='LOCAL'){{      pj=t.loc_pj; pts=t.loc_pts; gf=t.loc_gf; gc=t.loc_gc; }}
-    else if(cond==='VISITANTE'){{ pj=t.vis_pj; pts=t.vis_pts; gf=t.vis_gf; gc=t.vis_gc; }}
+    var pj, pts, gf, gc;
+    if(cond==='LOCAL')      {{ pj=t.loc_pj; pts=t.loc_pts; gf=t.loc_gf; gc=t.loc_gc; }}
+    else if(cond==='VISITANTE') {{ pj=t.vis_pj; pts=t.vis_pts; gf=t.vis_gf; gc=t.vis_gc; }}
     else {{ pj=t.pj; pts=t.pts; gf=t.gf; gc=t.gc; }}
     if(!pj) return null;
-    const dg = gf-gc;
     return {{
-      pj, pts,
       pts_pj: (pts/pj).toFixed(2),
       rdt:    Math.round(pts/(pj*3)*100)+'%',
       gf_pj:  (gf/pj).toFixed(2),
       gc_pj:  (gc/pj).toFixed(2),
-      dg,
-      pct_g: cond==='LOCAL'?(t.loc_pct_g!==null&&t.loc_pct_g!==undefined?t.loc_pct_g+'%':'-'):
-             cond==='VISITANTE'?(t.vis_pct_g!==null&&t.vis_pct_g!==undefined?t.vis_pct_g+'%':'-'):
+      pct_g: cond==='LOCAL'?(t.loc_pct_g!=null?t.loc_pct_g+'%':'-'):
+             cond==='VISITANTE'?(t.vis_pct_g!=null?t.vis_pct_g+'%':'-'):
              t.pct_g+'%',
-      pct_e: cond==='LOCAL'?(t.loc_pct_e!==null&&t.loc_pct_e!==undefined?t.loc_pct_e+'%':'-'):
-             cond==='VISITANTE'?(t.vis_pct_e!==null&&t.vis_pct_e!==undefined?t.vis_pct_e+'%':'-'):
+      pct_e: cond==='LOCAL'?(t.loc_pct_e!=null?t.loc_pct_e+'%':'-'):
+             cond==='VISITANTE'?(t.vis_pct_e!=null?t.vis_pct_e+'%':'-'):
              t.pct_e+'%',
-      pct_p: cond==='LOCAL'?(t.loc_pct_p!==null&&t.loc_pct_p!==undefined?t.loc_pct_p+'%':'-'):
-             cond==='VISITANTE'?(t.vis_pct_p!==null&&t.vis_pct_p!==undefined?t.vis_pct_p+'%':'-'):
+      pct_p: cond==='LOCAL'?(t.loc_pct_p!=null?t.loc_pct_p+'%':'-'):
+             cond==='VISITANTE'?(t.vis_pct_p!=null?t.vis_pct_p+'%':'-'):
              t.pct_p+'%',
+      _pts_pj_num: pj?pts/pj:0,
+      _gf_pj_num:  pj?gf/pj:0,
+      _gc_pj_num:  pj?gc/pj:0,
+      _pct_g_num:  pj?t.pg/pj:0,
+      _pct_p_num:  pj?t.pp/pj:0,
     }};
   }}
 
-  document.querySelectorAll('.tbtn[data-grupo="cond"]').forEach(function(btn){{
-    btn.addEventListener('click', function(){{
-      document.querySelectorAll('.tbtn[data-grupo="cond"]').forEach(function(b){{b.classList.remove('active');}});
-      this.classList.add('active');
-      condActual=this.dataset.val;
-      render();
-    }});
-  }});
+  function getVal(t, col){{
+    if(t._m && t._m[col]!==undefined){{
+      var v=t._m[col]; var p=parseFloat(v);
+      return !isNaN(p)?p:String(v).toLowerCase();
+    }}
+    if(t[col]!==undefined){{ var p2=parseFloat(t[col]); return !isNaN(p2)?p2:String(t[col]).toLowerCase(); }}
+    return 0;
+  }}
+
+  var SECONDARY={{
+    'pts_pj':[['_gf_pj_num',false],['_gc_pj_num',true]],
+    'rdt':   [['_pts_pj_num',false],['_gf_pj_num',false]],
+    'gf_pj': [['_pts_pj_num',false]],
+    'gc_pj': [['_pts_pj_num',false]],
+    'pct_g': [['_pts_pj_num',false]],
+    'pct_e': [['_pts_pj_num',false]],
+    'pct_p': [['_pts_pj_num',false]],
+    'zona':  [['_pts_pj_num',false]],
+    'nombre':[],
+  }};
 
   function render(){{
-    let filas = faseActual==='TODAS' ? FILAS : FILAS.filter(function(t){{return t.fase_actual===faseActual;}});
-    if(h2hMode && h2hSel.length===2){{
-      filas = filas.filter(function(t){{ return h2hSel.indexOf(t.nombre)>=0; }});
-    }}
-    const withM = filas.map(function(t){{
-      var cond = condActual;
-      if(h2hAsignado && h2hSel.length===2){{
-        cond = (t.nombre===h2hSel[0]) ? 'LOCAL' : 'VISITANTE';
-      }}
-      return Object.assign({{}}, t, {{_m: metricas(t, cond), _cond: cond}});
+    var filas=faseA==='TODAS'?FILAS:FILAS.filter(function(t){{return t.fase_actual===faseA;}});
+    if(h2hMode&&h2hSel.length===2) filas=filas.filter(function(t){{return h2hSel.indexOf(t.nombre)>=0;}});
+    var withM=filas.map(function(t){{
+      var cond=condA;
+      if(h2hAsig&&h2hSel.length===2) cond=(t.nombre===h2hSel[0])?'LOCAL':'VISITANTE';
+      return Object.assign({{}},t,{{_m:metricas(t,cond),_cond:cond}});
     }}).filter(function(t){{return t._m;}});
 
-    const SECONDARY = {{
-      'pts':    [['dg',false],['gf_pj',false],['gc_pj',true]],
-      'pts_pj': [['dg',false],['gf_pj',false]],
-      'rdt':    [['dg',false],['gf_pj',false]],
-      'dg':     [['pts',false],['gf_pj',false]],
-      'gf_pj':  [['pts',false],['dg',false]],
-      'gc_pj':  [['dg',false],['pts',false]],
-      'pct_g':  [['pts',false],['dg',false]],
-      'pct_e':  [['pts',false],['dg',false]],
-      'pct_p':  [['pts',false],['dg',false]],
-      'pj':     [['pts',false],['dg',false]],
-      'zona':   [['pts',false],['dg',false]],
-    }};
-    function getVal(t, col) {{
-      const v = t._m[col]!==undefined ? t._m[col] : t[col];
-      const p = parseFloat(v);
-      return !isNaN(p) ? p : String(v).toLowerCase();
-    }}
-    if(h2hAsignado && h2hSel.length===2){{
-      withM.sort(function(a,b){{
-        return h2hSel.indexOf(a.nombre) - h2hSel.indexOf(b.nombre);
-      }});
+    if(h2hAsig&&h2hSel.length===2){{
+      withM.sort(function(a,b){{return h2hSel.indexOf(a.nombre)-h2hSel.indexOf(b.nombre);}});
     }} else {{
       withM.sort(function(a,b){{
-        const va=getVal(a,sortCol), vb=getVal(b,sortCol);
+        var va=getVal(a,sortCol), vb=getVal(b,sortCol);
         if(va!==vb) return sortAsc?(va>vb?1:-1):(va<vb?1:-1);
-        const secs=SECONDARY[sortCol]||[];
-        for(let i=0;i<secs.length;i++){{
-          const sc=secs[i][0];
-          const va2=getVal(a,sc), vb2=getVal(b,sc);
+        var secs=SECONDARY[sortCol]||[];
+        for(var i=0;i<secs.length;i++){{
+          var sc=secs[i][0]; var va2=getVal(a,sc), vb2=getVal(b,sc);
           if(va2!==vb2) return va2>vb2?-1:1;
         }}
         return 0;
       }});
     }}
 
+    var BD='border-bottom:1px solid var(--s3);white-space:nowrap';
+    var stk='position:sticky;left:0;z-index:2;background:var(--bg)';
     document.getElementById('tg-body').innerHTML=withM.map(function(t){{
-      const m=t._m;
-      const zc=ZC[t.zona]||'#888';
-      const dg=m.dg>=0?'+'+m.dg:String(m.dg);
-      const dgc=m.dg>0?'var(--gp)':(m.dg<0?'var(--gn)':'var(--t3)');
-      const s='border-bottom:1px solid var(--s3);white-space:nowrap';
-      const td=function(v){{return '<td style="padding:3px 12px;text-align:right;'+s+';color:var(--t2)">'+v+'</td>';}};
-      const ta=function(v){{return '<td style="padding:3px 12px;text-align:right;'+s+';color:var(--acc);font-weight:500">'+v+'</td>';}};
-      const h2hClass = h2hMode ? ' h2h-pick' : '';
-      const selClass  = (h2hMode && h2hSel.indexOf(t.nombre)>=0) ? ' h2h-sel' : '';
-      return '<tr class="tg-row'+h2hClass+selClass+'" data-h2h="'+t.nombre.replace(/"/g,'&quot;')+'">' 
-        +'<td class="tg-sticky" style="position:sticky;left:0;z-index:2;padding:3px 12px;'+s+';border-right:1px solid var(--s3);color:var(--t1);min-width:140px;font-size:11px">'
-        +t.nombre
-        +(h2hAsignado&&h2hSel.length===2?'<span style="font-size:9px;color:var(--t3);margin-left:5px;font-family:var(--grotesk);letter-spacing:.04em">'+(t._cond==='LOCAL'?'LOC':'VIS')+'</span>':'')
-        +'</td>'
-        +'<td style="padding:3px 8px;text-align:right;'+s+';color:'+zc+';font-size:10px">'+t.zona+'</td>'
-        +td(m.pj)+ta(m.pts)
-        +td(m.pts_pj)+td(m.rdt)
-        +td(m.gf_pj)+td(m.gc_pj)
-        +'<td style="padding:3px 12px;text-align:right;'+s+';color:'+dgc+'">'+dg+'</td>'
+      var m=t._m;
+      var zc=ZC[t.zona]||'#888';
+      var h2hc=(h2hMode?' h2h-pick':'')+(h2hMode&&h2hSel.indexOf(t.nombre)>=0?' h2h-sel':'');
+      var lbl=h2hAsig&&h2hSel.length===2?'<span style="font-size:9px;color:var(--t3);margin-left:5px">'+
+              (t._cond==='LOCAL'?'LOC':'VIS')+'</span>':'';
+      var td=function(v){{return '<td style="padding:3px 10px;text-align:right;'+BD+';color:var(--t2)">'+v+'</td>';}};
+      return '<tr class="tg-row'+h2hc+'" data-h2h="'+t.nombre.replace(/"/g,'&quot;')+'">'
+        +'<td style="'+stk+';padding:3px 12px;text-align:left;'+BD+';border-right:1px solid var(--s3);color:var(--t1);min-width:140px;font-size:11px">'+t.nombre+lbl+'</td>'
+        +'<td style="padding:3px 8px;text-align:right;'+BD+';color:'+zc+';font-size:10px">'+t.zona+'</td>'
+        +td(m.pts_pj)+td(m.rdt)+td(m.gf_pj)+td(m.gc_pj)
         +td(m.pct_g)+td(m.pct_e)+td(m.pct_p)
         +'</tr>';
     }}).join('');
   }}
 
-  document.getElementById('tabla-gral').querySelector('thead').addEventListener('click', function(e){{
-    const th=e.target.closest('th[data-col]');
-    if(!th) return;
-    const col=th.dataset.col;
-    if(col===sortCol) sortAsc=!sortAsc;
-    else{{ sortCol=col; sortAsc=th.dataset.asc==='true'; }}
+  // Sort on header click
+  document.getElementById('tabla-gral').querySelector('thead').addEventListener('click',function(e){{
+    var th=e.target.closest('th[data-col]'); if(!th) return;
+    var col=th.dataset.col;
+    if(col===sortCol) sortAsc=!sortAsc; else {{ sortCol=col; sortAsc=th.dataset.asc==='true'; }}
     document.querySelectorAll('#tabla-gral thead .si').forEach(function(s){{s.textContent='↕';}});
     th.querySelector('.si').textContent=sortAsc?'↑':'↓';
     render();
   }});
 
-  // ── HEAD TO HEAD ──
-  var h2hMode=false, h2hSel=[], h2hAsignado=false;
-
-  function updateAsign(){{
-    h2hAsignado = (h2hMode && h2hSel.length===2);
-  }}
-
-  document.getElementById('tg-body').addEventListener('click', function(e){{
+  // H2H
+  document.getElementById('tg-body').addEventListener('click',function(e){{
     if(!h2hMode) return;
-    var tr=e.target.closest('tr[data-h2h]');
-    if(!tr) return;
-    var nombre=tr.dataset.h2h;
-    var idx=h2hSel.indexOf(nombre);
-    if(idx>=0){{ h2hSel.splice(idx,1); }}
-    else if(h2hSel.length<2){{ h2hSel.push(nombre); }}
+    var tr=e.target.closest('tr[data-h2h]'); if(!tr) return;
+    var n=tr.dataset.h2h;
+    var idx=h2hSel.indexOf(n);
+    if(idx>=0) h2hSel.splice(idx,1);
+    else if(h2hSel.length<2) h2hSel.push(n);
+    h2hAsig=(h2hSel.length===2);
     var hint=document.getElementById('h2h-hint');
-    if(h2hSel.length===0) hint.textContent='Elegí dos equipos';
+    if(!h2hSel.length) hint.textContent='Elegí dos equipos';
     else if(h2hSel.length===1) hint.textContent=h2hSel[0]+' vs …';
     else hint.textContent=h2hSel[0]+' vs '+h2hSel[1];
-    updateAsign();
     render();
   }});
 
-  document.getElementById('btn-h2h').addEventListener('click', function(){{
-    h2hMode=!h2hMode; h2hSel=[]; h2hAsignado=false;
-    this.style.background  = h2hMode ? 'var(--acc)' : '';
-    this.style.color       = h2hMode ? '#fff' : '';
-    this.style.borderColor = h2hMode ? 'var(--acc)' : '';
-    document.querySelectorAll('.tbtn[data-grupo="cond"]').forEach(function(b){{
-      if(h2hMode) b.classList.add('disabled');
-      else b.classList.remove('disabled');
+  var btnH2h=document.getElementById('btn-h2h');
+  if(btnH2h) btnH2h.addEventListener('click',function(){{
+    h2hMode=!h2hMode; h2hSel=[]; h2hAsig=false;
+    this.style.background  =h2hMode?'var(--acc)':'';
+    this.style.color       =h2hMode?'#fff':'';
+    this.style.borderColor =h2hMode?'var(--acc)':'';
+    document.querySelectorAll('.tbtn[data-g="cond"]').forEach(function(b){{
+      h2hMode?b.classList.add('disabled'):b.classList.remove('disabled');
     }});
     var hint=document.getElementById('h2h-hint');
-    hint.style.display = h2hMode ? 'inline' : 'none';
-    hint.textContent   = 'Elegí dos equipos';
+    hint.style.display=h2hMode?'inline':'none';
+    hint.textContent='Elegí dos equipos';
     render();
   }});
 
@@ -1841,11 +1914,8 @@ def render_stats_full(data, fa):
 }})();
 </script>'''
 
-    # ── TOTALES, POR FECHA, POR ZONA — guardados para uso futuro en otras solapas
-    # tabla_global, tabla_fecha, tabla_zona, leyenda disponibles cuando se necesiten
+    return filtros + tabla + js
 
-    # Por ahora la solapa ESTADÍSTICAS muestra solo la tabla general
-    return tabla_gral
 
 def render_zona_2f(label, color, sub, data):
     rows = ''
@@ -1935,22 +2005,26 @@ def generar_html(data, template_path, output_path):
 # MAIN
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
-    SHEET_ID = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
-    URL_CARGA = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
-    URL_GOLES = f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
-    template = Path('tfa2026_mini_template.html')
-    output  = Path('index.html')
+    path_carga = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('tfa26_carga.csv')
+    path_goles = Path(sys.argv[2]) if len(sys.argv) > 2 else Path('tfa26_goles.csv')
+    template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
+    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('dashboard.html')
 
-    print('Leyendo Carga desde Google Sheets...')
-    df_carga = leer_carga(URL_CARGA)
-    print('Leyendo Goles desde Google Sheets...')
-    df_goles = leer_goles(URL_GOLES)
+    print(f"Leyendo {path_carga}...")
+    df_carga = leer_carga(path_carga)
+    print(f"Leyendo {path_goles}...")
+    df_goles = leer_goles(path_goles)
 
-    print('Calculando datos...')
+    print("Calculando datos...")
     data  = armar_datos(df_carga, df_goles)
     stats = data['stats']
-    print(f"  Fecha : {stats['fecha_actual']}/{stats['fecha_total']}")
-    print(f"  Partidos : {stats['partidos_jugados']}")
-    print(f"  Goles : {stats['total_goles']}")
+
+    print(f"  Fase activa  : {stats['fase_activa']}")
+    print(f"  Fecha        : {stats['fecha_actual']}/{stats['fecha_total']}")
+    print(f"  Partidos     : {stats['partidos_jugados']}")
+    print(f"  Goles        : {stats['total_goles']}")
+    if data['mejor_5to']:
+        m5 = data['mejor_5to']
+        print(f"  Mejor 5to    : {m5['nombre']} (Z{m5['from_zone']}, {m5['pts']}pts)")
 
     generar_html(data, template, output)
