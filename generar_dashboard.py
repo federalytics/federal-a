@@ -1751,7 +1751,7 @@ def render_stats_full(data, fa):
         f'<tbody id="tg-body"></tbody>'
         f'</table></div>'
         f'<style>'
-        f'@media (max-width:600px) {{ #stats-scroll {{ max-height:238px }} }}'
+        f'@media (max-width:600px) {{ #stats-scroll {{ max-height:224px }} }}'
         f'</style>'
         f'<div style="font-size:10px;color:var(--t3);margin-top:6px">'
         f'LOCAL/VISITANTE recalcula todas las métricas · Click columna para ordenar'
@@ -2005,11 +2005,11 @@ def generar_html(data, template_path, output_path):
 # MAIN
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
-    SHEET_ID = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
+    SHEET_ID   = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
     path_carga = sys.argv[1] if len(sys.argv) > 1 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
     path_goles = sys.argv[2] if len(sys.argv) > 2 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
     template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
-    output = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('index.html')
+    output     = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('dashboard.html')
 
     print(f"Leyendo {path_carga}...")
     df_carga = leer_carga(path_carga)
