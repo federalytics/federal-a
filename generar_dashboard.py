@@ -2005,8 +2005,9 @@ def generar_html(data, template_path, output_path):
 # MAIN
 # ═══════════════════════════════════════════════
 if __name__ == '__main__':
-    path_carga = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('tfa26_carga.csv')
-    path_goles = Path(sys.argv[2]) if len(sys.argv) > 2 else Path('tfa26_goles.csv')
+    SHEET_ID = '1s6GRQkIM8bqL3st2eeZT37qSAdT4ElomRQS54KIqa6Q'
+    path_carga = sys.argv[1] if len(sys.argv) > 1 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Carga'
+    path_goles = sys.argv[2] if len(sys.argv) > 2 else f'https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Goles'
     template   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('tfa2026_mini_template.html')
     output = Path(sys.argv[4]) if len(sys.argv) > 4 else Path('index.html')
 
